@@ -457,6 +457,9 @@ function App() {
           Threshold: {settings?.feedInThreshold || 15}c/kWh •
           Updates every minute
         </p>
+        <p className="footer-credit">
+          Built by <a href="https://bishal.com.au" target="_blank" rel="noopener noreferrer">Bishal</a>
+        </p>
       </footer>
 
       {/* Login Modal */}

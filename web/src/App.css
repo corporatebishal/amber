@@ -292,6 +292,20 @@
   color: var(--accent-pink);
 }
 
+.footer-credit {
+  margin-top: 0.5rem;
+  font-size: 0.85rem;
+  opacity: 0.8;
+}
+
+.footer-credit a {
+  font-weight: 700;
+  background: linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-secondary) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
 /* Mobile Hamburger Menu */
 .mobile-header-controls {
   display: none;
