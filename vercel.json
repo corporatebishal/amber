@@ -1,4 +1,6 @@
 {
+  "buildCommand": "npm run build",
+  "outputDirectory": "web/dist",
   "rewrites": [
     { "source": "/api/prices/current", "destination": "/api/prices" },
     { "source": "/api/usage/current", "destination": "/api/usage" },
