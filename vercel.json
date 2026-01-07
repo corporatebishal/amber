@@ -24,7 +24,6 @@
     }
   ],
   "env": {
-    "AMBER_API_KEY": "@amber-api-key",
     "FEED_IN_THRESHOLD": "15.0",
     "TIMEZONE": "Australia/Sydney"
   }
