@@ -1,17 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { createClient } from 'redis';
+import axios from 'axios';
 
-// Redis client singleton
-let redisClient: any = null;
-async function getRedisClient() {
-  if (!redisClient) {
-    redisClient = createClient({
-      url: process.env.REDIS_URL,
-    });
-    await redisClient.connect();
-  }
-  return redisClient;
-}
+const AMBER_BASE_URL = 'https://api.amber.com.au/v1';
 
 export default async function handler(
   req: VercelRequest,
@@ -31,33 +21,52 @@ export default async function handler(
   }
 
   try {
-    const redis = await getRedisClient();
+    const apiKey = process.env.AMBER_API_KEY;
 
-    // Get usage data from Redis
-    const usageJson = await redis.get('usage-data');
-    const usageData: any[] = usageJson ? JSON.parse(usageJson) : [];
+    if (!apiKey) {
+      return res.status(500).json({ error: 'API key not configured' });
+    }
 
-    // Calculate totals
-    const now = new Date();
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    // Fetch sites first
+    const sitesResponse = await axios.get(`${AMBER_BASE_URL}/sites`, {
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+    });
 
-    const todayUsage = usageData
-      .filter((entry: any) => new Date(entry.timestamp) >= todayStart)
-      .reduce((sum: number, entry: any) => sum + (entry.usage || 0), 0);
+    const sites = sitesResponse.data;
+    const activeSite = sites.find((s: any) => s.status === 'active');
 
-    const monthUsage = usageData
-      .filter((entry: any) => new Date(entry.timestamp) >= monthStart)
-      .reduce((sum: number, entry: any) => sum + (entry.usage || 0), 0);
+    if (!activeSite) {
+      return res.status(404).json({ error: 'No active sites found' });
+    }
+
+    // Calculate date range for last 24 hours
+    const endDate = new Date();
+    const startDate = new Date(endDate.getTime() - 24 * 60 * 60 * 1000);
+
+    // Fetch usage data from Amber API
+    const usageResponse = await axios.get(
+      `${AMBER_BASE_URL}/sites/${activeSite.id}/usage`,
+      {
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        params: {
+          startDate: startDate.toISOString().split('T')[0],
+          endDate: endDate.toISOString().split('T')[0],
+          resolution: 30, // 30-minute intervals
+        },
+      }
+    );
 
     return res.status(200).json({
-      usage: usageData,
-      current: usageData.length > 0 ? usageData[0].usage : 0,
-      today: todayUsage,
-      thisMonth: monthUsage,
+      usage: usageResponse.data,
     });
   } catch (error: any) {
-    console.error('Error fetching usage data:', error);
+    console.error('Error fetching usage data:', error.message);
     return res.status(500).json({
       error: 'Failed to fetch usage data',
       message: error.message,
