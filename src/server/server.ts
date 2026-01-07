@@ -154,18 +154,19 @@ export class WebServer {
     });
 
     // Auth endpoint
-    this.app.post('/api/auth', async (req: Request, res: Response) => {
-      const { username, password, action, token } = req.body;
+    this.app.post('/api/auth', async (req: Request, res: Response): Promise<void> => {
+      const { username, password, action } = req.body;
 
       if (action === 'login') {
         const adminUsername = process.env.ADMIN_USERNAME;
         const adminPassword = process.env.ADMIN_PASSWORD;
 
         if (!adminUsername || !adminPassword) {
-          return res.status(500).json({
+          res.status(500).json({
             success: false,
             message: 'Admin credentials not configured',
           });
+          return;
         }
 
         if (username === adminUsername && password === adminPassword) {
@@ -173,27 +174,31 @@ export class WebServer {
 
           // For localhost, we'll store sessions in memory (simple implementation)
           // On Vercel, Redis is used instead
-          return res.status(200).json({
+          res.status(200).json({
             success: true,
             token: sessionToken,
             username,
           });
+          return;
         } else {
-          return res.status(401).json({
+          res.status(401).json({
             success: false,
             message: 'Invalid credentials',
           });
+          return;
         }
       }
 
       if (action === 'logout') {
-        return res.status(200).json({ success: true });
+        res.status(200).json({ success: true });
+        return;
       }
 
       if (action === 'verify') {
         // For localhost, we'll just accept any token as valid (simple implementation)
         // On Vercel, Redis is used to validate tokens
-        return res.status(200).json({ success: true, username: 'admin' });
+        res.status(200).json({ success: true, username: 'admin' });
+        return;
       }
 
       res.status(400).json({ error: 'Invalid action' });
