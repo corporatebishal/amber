@@ -1,0 +1,294 @@
+.price-display {
+  background: var(--bg-card);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: 20px;
+  padding: 1.75rem;
+  box-shadow: var(--shadow-xl), 0 0 0 1px rgba(102, 126, 234, 0.15);
+  border: 2px solid var(--border-color);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Gradient Border on Hover */
+.price-display::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: 24px;
+  padding: 2px;
+  background: var(--gradient-primary);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.price-display:hover::before {
+  opacity: 0.5;
+}
+
+.price-display.alert {
+  background: linear-gradient(135deg, rgba(251, 191, 36, 0.15) 0%, rgba(239, 68, 68, 0.1) 100%);
+  border: 2px solid var(--accent-yellow);
+  animation: glowPulse 2s ease-in-out infinite;
+}
+
+@keyframes glowPulse {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(251, 191, 36, 0.4), var(--shadow-xl);
+  }
+  50% {
+    box-shadow: 0 0 40px rgba(251, 191, 36, 0.6), var(--shadow-xl);
+  }
+}
+
+.price-display.loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 300px;
+  color: var(--text-muted);
+  font-size: 1.1rem;
+}
+
+.price-main {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 2.5rem;
+  margin-bottom: 2.5rem;
+  flex-wrap: wrap;
+}
+
+.price-value-section {
+  flex: 1;
+  min-width: 280px;
+}
+
+.price-label {
+  display: block;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  margin-bottom: 1rem;
+  font-weight: 700;
+}
+
+.price-value {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  margin-bottom: 1.2rem;
+}
+
+.price-number {
+  font-size: 3.5rem;
+  font-weight: 800;
+  background: var(--gradient-primary);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  animation: fadeInScale 0.5s ease-out;
+}
+
+@keyframes fadeInScale {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.price-unit {
+  font-size: 1.5rem;
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.price-meta {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.price-descriptor {
+  font-size: 1.2rem;
+  font-weight: 700;
+  padding: 0.6rem 1.2rem;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.estimate-badge {
+  font-size: 0.75rem;
+  padding: 0.4rem 0.8rem;
+  background: var(--accent-yellow);
+  color: var(--bg-primary);
+  border-radius: 8px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Alert Banner with Gradient */
+.alert-banner {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  background: var(--gradient-warning);
+  color: white;
+  padding: 2rem;
+  border-radius: 16px;
+  flex: 1;
+  min-width: 300px;
+  animation: slideInRight 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 8px 24px rgba(250, 112, 154, 0.3);
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.alert-icon {
+  font-size: 3rem;
+  animation: bounce 2s ease-in-out infinite;
+}
+
+@keyframes bounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+.alert-content strong {
+  display: block;
+  font-size: 1.4rem;
+  margin-bottom: 0.5rem;
+  font-weight: 700;
+}
+
+.alert-content p {
+  font-size: 1rem;
+  opacity: 0.95;
+  line-height: 1.5;
+}
+
+/* Price Details Grid */
+.price-details {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 2rem;
+  padding-top: 2rem;
+  border-top: 2px solid var(--border-color);
+}
+
+.detail-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+  transition: all 0.3s ease;
+}
+
+.detail-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+  transform: translateY(-2px);
+}
+
+.detail-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-weight: 700;
+}
+
+.detail-value {
+  font-size: 1.4rem;
+  color: var(--text-primary);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.detail-value.renewables {
+  background: var(--gradient-success);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.detail-value.spike-spike {
+  color: var(--accent-red);
+  animation: flashRed 1s ease-in-out infinite;
+}
+
+@keyframes flashRed {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+.detail-value.spike-potential {
+  color: var(--accent-yellow);
+}
+
+.detail-value.spike-none {
+  color: var(--accent-green);
+}
+
+@media (max-width: 768px) {
+  .price-display {
+    padding: 1.5rem;
+  }
+
+  .price-number {
+    font-size: 3rem;
+  }
+
+  .price-unit {
+    font-size: 1.2rem;
+  }
+
+  .price-details {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+  }
+
+  .alert-banner {
+    flex-direction: column;
+    text-align: center;
+  }
+}

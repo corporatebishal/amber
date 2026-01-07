@@ -1,0 +1,144 @@
+.usage-chart-container {
+  background: var(--bg-card);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: 20px;
+  padding: 1.75rem;
+  box-shadow: var(--shadow-lg), 0 0 0 1px rgba(102, 126, 234, 0.1);
+  border: 2px solid var(--border-color);
+  transition: all 0.3s ease;
+}
+
+.usage-chart-container.loading {
+  min-height: 200px;
+}
+
+.usage-header {
+  margin-bottom: 1.5rem;
+}
+
+.usage-header h3 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 0.25rem 0;
+  letter-spacing: -0.02em;
+}
+
+.usage-subtitle {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin: 0;
+  font-weight: 600;
+}
+
+/* Summary Grid */
+.usage-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.summary-item {
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 12px;
+  padding: 1rem;
+  border: 2px solid var(--border-color);
+  text-align: center;
+  transition: all 0.3s ease;
+}
+
+.summary-item:hover {
+  transform: translateY(-2px);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.summary-item.consumption {
+  border-color: rgba(239, 68, 68, 0.3);
+  background: rgba(239, 68, 68, 0.05);
+}
+
+.summary-item.export {
+  border-color: rgba(16, 185, 129, 0.3);
+  background: rgba(16, 185, 129, 0.05);
+}
+
+.summary-item.net.positive {
+  border-color: rgba(16, 185, 129, 0.4);
+  background: rgba(16, 185, 129, 0.08);
+}
+
+.summary-item.net.negative {
+  border-color: rgba(239, 68, 68, 0.4);
+  background: rgba(239, 68, 68, 0.08);
+}
+
+.summary-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 0.5rem;
+  font-weight: 700;
+}
+
+.summary-value {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 0.25rem;
+  line-height: 1.2;
+}
+
+.summary-cost {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.summary-item.consumption .summary-cost {
+  color: #ef4444;
+}
+
+.summary-item.export .summary-cost {
+  color: #10b981;
+}
+
+.summary-item.net.positive .summary-cost {
+  color: #10b981;
+}
+
+.summary-item.net.negative .summary-cost {
+  color: #ef4444;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .usage-chart-container {
+    padding: 1.5rem;
+  }
+
+  .usage-summary {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.75rem;
+  }
+
+  .summary-item {
+    padding: 0.875rem;
+  }
+
+  .summary-value {
+    font-size: 1rem;
+  }
+
+  .summary-cost {
+    font-size: 0.85rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .usage-summary {
+    grid-template-columns: 1fr;
+  }
+}
