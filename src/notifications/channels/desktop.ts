@@ -24,11 +24,8 @@ export class DesktopNotification implements NotificationChannel {
             `Great time to export solar power!\n` +
             `Spot: ${alert.spotPerKwh}c/kWh | Renewables: ${alert.renewables}%\n` +
             `Valid until: ${endTime}${alert.estimate ? ' (estimate)' : ''}`,
-          sound: true,
           wait: false,
           timeout: 10,
-          appName: 'Amber Notifications by Bishal',
-          icon: undefined, // You can add a custom icon path here
         },
         (err, response) => {
           if (err) {
