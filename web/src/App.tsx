@@ -162,15 +162,17 @@ function App() {
     setUsageData([]);
   };
 
+  // Fetch usage data when authentication status changes
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchUsageData();
+    }
+  }, [isAuthenticated]);
+
   useEffect(() => {
     // Fetch initial data
     fetchPriceData();
     fetchSettings();
-
-    // Only fetch usage data if authenticated
-    if (isAuthenticated) {
-      fetchUsageData();
-    }
 
     if (isVercel) {
       // Vercel: Use polling instead of WebSocket
@@ -458,7 +460,7 @@ function App() {
           Updates every minute
         </p>
         <p className="footer-credit">
-          Built by <a href="https://bishal.com.au" target="_blank" rel="noopener noreferrer">Bishal</a>
+          Built by <a href="https://bishal.com.au" target="_blank" rel="noopener noreferrer">Bishal Shrestha</a>
         </p>
       </footer>
 
