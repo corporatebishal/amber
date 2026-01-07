@@ -64,9 +64,35 @@ function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [username, setUsername] = useState<string | null>(null);
   const [showLogin, setShowLogin] = useState(false);
+  const [priceType, setPriceType] = useState<'feedIn' | 'general'>('general'); // Default to 'general' (consumption)
 
   // Detect if running on Vercel (serverless, no WebSocket support)
   const isVercel = window.location.hostname.includes('vercel.app');
+
+  // Get active price data based on selected type
+  const getActivePrice Data = () => {
+    if (!priceData) return null;
+
+    if (priceType === 'feedIn' && priceData.feedIn) {
+      return {
+        current: priceData.feedIn.current,
+        forecast: priceData.feedIn.forecast || [],
+      };
+    } else if (priceType === 'general' && priceData.general) {
+      return {
+        current: priceData.general.current,
+        forecast: priceData.general.forecast || [],
+      };
+    }
+
+    // Fallback to default current/forecast
+    return {
+      current: priceData.current,
+      forecast: priceData.forecast || [],
+    };
+  };
+
+  const activePriceData = getActivePriceData();
 
   // Calculate interval in seconds from settings
   const getIntervalSeconds = (interval: string | undefined): number => {
@@ -453,7 +479,7 @@ function App() {
 
       <footer className="footer">
         <p>
-          Monitoring feed-in prices from Amber Electric •
+          Monitoring electricity prices from Amber Electric •
           Threshold: {settings?.feedInThreshold || 15}c/kWh •
           Updates every minute
         </p>

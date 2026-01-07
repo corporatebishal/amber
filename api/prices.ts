@@ -78,18 +78,23 @@ export default async function handler(
     const prices = pricesResponse.data;
     console.log('All prices:', JSON.stringify(prices, null, 2));
 
-    // Try feedIn first, fallback to general if no feedIn available
-    let relevantPrices = prices.filter((p: any) => p.channelType === 'feedIn');
-    console.log('Feed-in prices count:', relevantPrices.length);
+    // Get both feedIn and general prices
+    const feedInPrices = prices.filter((p: any) => p.channelType === 'feedIn');
+    const generalPrices = prices.filter((p: any) => p.channelType === 'general');
 
-    if (relevantPrices.length === 0) {
-      console.log('No feed-in prices found, using general channel');
-      relevantPrices = prices.filter((p: any) => p.channelType === 'general');
-      console.log('General prices count:', relevantPrices.length);
-    }
+    console.log('Feed-in prices count:', feedInPrices.length);
+    console.log('General prices count:', generalPrices.length);
 
-    const currentInterval = relevantPrices.find((p: any) => p.type === 'CurrentInterval');
-    const forecastIntervals = relevantPrices.filter((p: any) => p.type === 'ForecastInterval');
+    // Use feedIn as default, but send both
+    const feedInCurrent = feedInPrices.find((p: any) => p.type === 'CurrentInterval');
+    const feedInForecast = feedInPrices.filter((p: any) => p.type === 'ForecastInterval');
+
+    const generalCurrent = generalPrices.find((p: any) => p.type === 'CurrentInterval');
+    const generalForecast = generalPrices.filter((p: any) => p.type === 'ForecastInterval');
+
+    // Use feedIn for history (default)
+    const currentInterval = feedInCurrent || generalCurrent;
+    const forecastIntervals = feedInForecast.length > 0 ? feedInForecast : generalForecast;
 
     console.log('Current interval:', currentInterval ? 'found' : 'not found');
     console.log('Forecast intervals:', forecastIntervals.length);
@@ -134,7 +139,7 @@ export default async function handler(
       }
     }
 
-    const priceData: PriceData = {
+    const priceData: any = {
       current: currentInterval ? {
         price: currentInterval.perKwh,
         spotPerKwh: currentInterval.spotPerKwh,
@@ -144,6 +149,7 @@ export default async function handler(
         spikeStatus: currentInterval.spikeStatus,
         endTime: currentInterval.endTime,
         nemTime: currentInterval.nemTime,
+        channelType: currentInterval.channelType,
       } : null,
       forecast: forecastIntervals.map((interval: any) => ({
         price: interval.perKwh,
@@ -151,8 +157,48 @@ export default async function handler(
         descriptor: interval.descriptor,
         renewables: interval.renewables,
         type: interval.type,
+        channelType: interval.channelType,
       })),
       history: history,
+      // Include both channel types for toggling
+      feedIn: {
+        current: feedInCurrent ? {
+          price: feedInCurrent.perKwh,
+          spotPerKwh: feedInCurrent.spotPerKwh,
+          descriptor: feedInCurrent.descriptor,
+          renewables: feedInCurrent.renewables,
+          estimate: feedInCurrent.estimate || false,
+          spikeStatus: feedInCurrent.spikeStatus,
+          endTime: feedInCurrent.endTime,
+          nemTime: feedInCurrent.nemTime,
+        } : null,
+        forecast: feedInForecast.map((interval: any) => ({
+          price: interval.perKwh,
+          nemTime: interval.nemTime,
+          descriptor: interval.descriptor,
+          renewables: interval.renewables,
+          type: interval.type,
+        })),
+      },
+      general: {
+        current: generalCurrent ? {
+          price: generalCurrent.perKwh,
+          spotPerKwh: generalCurrent.spotPerKwh,
+          descriptor: generalCurrent.descriptor,
+          renewables: generalCurrent.renewables,
+          estimate: generalCurrent.estimate || false,
+          spikeStatus: generalCurrent.spikeStatus,
+          endTime: generalCurrent.endTime,
+          nemTime: generalCurrent.nemTime,
+        } : null,
+        forecast: generalForecast.map((interval: any) => ({
+          price: interval.perKwh,
+          nemTime: interval.nemTime,
+          descriptor: interval.descriptor,
+          renewables: interval.renewables,
+          type: interval.type,
+        })),
+      },
     };
 
     return res.status(200).json(priceData);
