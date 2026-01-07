@@ -65,11 +65,18 @@ export default async function handler(
     const prices = pricesResponse.data;
     console.log('All prices:', JSON.stringify(prices, null, 2));
 
-    const feedInPrices = prices.filter((p: any) => p.channelType === 'feedIn');
-    console.log('Feed-in prices count:', feedInPrices.length);
+    // Try feedIn first, fallback to general if no feedIn available
+    let relevantPrices = prices.filter((p: any) => p.channelType === 'feedIn');
+    console.log('Feed-in prices count:', relevantPrices.length);
 
-    const currentInterval = feedInPrices.find((p: any) => p.type === 'CurrentInterval');
-    const forecastIntervals = feedInPrices.filter((p: any) => p.type === 'ForecastInterval');
+    if (relevantPrices.length === 0) {
+      console.log('No feed-in prices found, using general channel');
+      relevantPrices = prices.filter((p: any) => p.channelType === 'general');
+      console.log('General prices count:', relevantPrices.length);
+    }
+
+    const currentInterval = relevantPrices.find((p: any) => p.type === 'CurrentInterval');
+    const forecastIntervals = relevantPrices.filter((p: any) => p.type === 'ForecastInterval');
 
     console.log('Current interval:', currentInterval ? 'found' : 'not found');
     console.log('Forecast intervals:', forecastIntervals.length);
