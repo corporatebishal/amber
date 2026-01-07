@@ -63,10 +63,16 @@ export default async function handler(
     );
 
     const prices = pricesResponse.data;
+    console.log('All prices:', JSON.stringify(prices, null, 2));
+
     const feedInPrices = prices.filter((p: any) => p.channelType === 'feedIn');
+    console.log('Feed-in prices count:', feedInPrices.length);
 
     const currentInterval = feedInPrices.find((p: any) => p.type === 'CurrentInterval');
     const forecastIntervals = feedInPrices.filter((p: any) => p.type === 'ForecastInterval');
+
+    console.log('Current interval:', currentInterval ? 'found' : 'not found');
+    console.log('Forecast intervals:', forecastIntervals.length);
 
     const priceData: PriceData = {
       current: currentInterval ? {
