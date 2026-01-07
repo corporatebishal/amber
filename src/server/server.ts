@@ -153,6 +153,52 @@ export class WebServer {
       }
     });
 
+    // Auth endpoint
+    this.app.post('/api/auth', async (req: Request, res: Response) => {
+      const { username, password, action, token } = req.body;
+
+      if (action === 'login') {
+        const adminUsername = process.env.ADMIN_USERNAME;
+        const adminPassword = process.env.ADMIN_PASSWORD;
+
+        if (!adminUsername || !adminPassword) {
+          return res.status(500).json({
+            success: false,
+            message: 'Admin credentials not configured',
+          });
+        }
+
+        if (username === adminUsername && password === adminPassword) {
+          const sessionToken = Math.random().toString(36).substring(2) + Date.now().toString(36);
+
+          // For localhost, we'll store sessions in memory (simple implementation)
+          // On Vercel, Redis is used instead
+          return res.status(200).json({
+            success: true,
+            token: sessionToken,
+            username,
+          });
+        } else {
+          return res.status(401).json({
+            success: false,
+            message: 'Invalid credentials',
+          });
+        }
+      }
+
+      if (action === 'logout') {
+        return res.status(200).json({ success: true });
+      }
+
+      if (action === 'verify') {
+        // For localhost, we'll just accept any token as valid (simple implementation)
+        // On Vercel, Redis is used to validate tokens
+        return res.status(200).json({ success: true, username: 'admin' });
+      }
+
+      res.status(400).json({ error: 'Invalid action' });
+    });
+
     this.app.get('/api/settings', (_req: Request, res: Response) => {
       const settings: AppSettings = {
         feedInThreshold: config.monitoring.feedInThreshold,

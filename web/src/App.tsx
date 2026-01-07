@@ -7,6 +7,7 @@ import ShortTermForecast from './components/ShortTermForecast';
 import Settings from './components/Settings';
 import RateLimitBanner from './components/RateLimitBanner';
 import UsageChart from './components/UsageChart';
+import Login from './components/Login';
 
 interface PriceData {
   current: {
@@ -60,6 +61,9 @@ function App() {
   } | null>(null);
   const [usageData, setUsageData] = useState<any[]>([]);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [username, setUsername] = useState<string | null>(null);
+  const [showLogin, setShowLogin] = useState(false);
 
   // Detect if running on Vercel (serverless, no WebSocket support)
   const isVercel = window.location.hostname.includes('vercel.app');
@@ -89,11 +93,84 @@ function App() {
     return () => clearInterval(countdown);
   }, [lastUpdate, settings]);
 
+  // Verify authentication on mount
+  useEffect(() => {
+    const token = localStorage.getItem('auth_token');
+    const storedUsername = localStorage.getItem('username');
+
+    if (token && storedUsername) {
+      verifyToken(token, storedUsername);
+    }
+  }, []);
+
+  const verifyToken = async (token: string, storedUsername: string) => {
+    try {
+      const response = await fetch('/api/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'verify',
+          token,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setIsAuthenticated(true);
+        setUsername(storedUsername);
+      } else {
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('username');
+      }
+    } catch (error) {
+      console.error('Failed to verify token:', error);
+      localStorage.removeItem('auth_token');
+      localStorage.removeItem('username');
+    }
+  };
+
+  const handleLoginSuccess = (_token: string, username: string) => {
+    setIsAuthenticated(true);
+    setUsername(username);
+    setShowLogin(false);
+    fetchUsageData();
+  };
+
+  const handleLogout = async () => {
+    const token = localStorage.getItem('auth_token');
+
+    if (token) {
+      try {
+        await fetch('/api/auth', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'logout',
+            token,
+          }),
+        });
+      } catch (error) {
+        console.error('Logout error:', error);
+      }
+    }
+
+    localStorage.removeItem('auth_token');
+    localStorage.removeItem('username');
+    setIsAuthenticated(false);
+    setUsername(null);
+    setUsageData([]);
+  };
+
   useEffect(() => {
     // Fetch initial data
     fetchPriceData();
     fetchSettings();
-    fetchUsageData();
+
+    // Only fetch usage data if authenticated
+    if (isAuthenticated) {
+      fetchUsageData();
+    }
 
     if (isVercel) {
       // Vercel: Use polling instead of WebSocket
@@ -263,6 +340,32 @@ function App() {
             <div className="next-update">
               Next update: {nextUpdateIn}s
             </div>
+            {isAuthenticated ? (
+              <>
+                <div className="user-info">
+                  👤 {username}
+                </div>
+                <button
+                  className="logout-button"
+                  onClick={() => {
+                    handleLogout();
+                    setShowMobileMenu(false);
+                  }}
+                >
+                  Logout
+                </button>
+              </>
+            ) : (
+              <button
+                className="login-button-header"
+                onClick={() => {
+                  setShowLogin(true);
+                  setShowMobileMenu(false);
+                }}
+              >
+                🔐 Login
+              </button>
+            )}
             <button
               className="settings-button"
               onClick={() => {
@@ -297,10 +400,26 @@ function App() {
                 />
               </div>
 
-              {/* Usage chart - now works on Vercel with KV storage */}
-              <div className="usage-section">
-                <UsageChart usage={usageData} />
-              </div>
+              {/* Usage chart - only visible when authenticated */}
+              {isAuthenticated ? (
+                <div className="usage-section">
+                  <UsageChart usage={usageData} />
+                </div>
+              ) : (
+                <div className="usage-section locked">
+                  <div className="locked-content">
+                    <div className="lock-icon">🔒</div>
+                    <h3>Usage Data Locked</h3>
+                    <p>Login to view usage and cost information</p>
+                    <button
+                      className="unlock-button"
+                      onClick={() => setShowLogin(true)}
+                    >
+                      Login to Unlock
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Next 2 Hours - Full width row */}
@@ -339,6 +458,9 @@ function App() {
           Updates every minute
         </p>
       </footer>
+
+      {/* Login Modal */}
+      {showLogin && <Login onLoginSuccess={handleLoginSuccess} />}
     </div>
   );
 }
