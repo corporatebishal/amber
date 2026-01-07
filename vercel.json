@@ -1,6 +1,7 @@
 {
   "rewrites": [
     { "source": "/api/prices/current", "destination": "/api/prices" },
+    { "source": "/api/usage/current", "destination": "/api/usage" },
     { "source": "/api/settings", "destination": "/api/settings" }
   ]
 }
