@@ -94,7 +94,7 @@ export default async function handler(
     console.log('Current interval:', currentInterval ? 'found' : 'not found');
     console.log('Forecast intervals:', forecastIntervals.length);
 
-    // Store current price in KV for history
+    // Store current price in Redis for history
     let history: any[] = [];
     if (currentInterval) {
       const historyEntry = {
@@ -112,9 +112,15 @@ export default async function handler(
         const historyJson = await redis.get('price-history');
         const existingHistory: any[] = historyJson ? JSON.parse(historyJson) : [];
 
-        // Add new entry (avoid duplicates by checking nemTime)
-        if (existingHistory.length === 0 || existingHistory[0].nemTime !== historyEntry.nemTime) {
-          existingHistory.unshift(historyEntry);
+        // If history is empty, use current price as the only history point
+        if (existingHistory.length === 0) {
+          existingHistory.push(historyEntry);
+          console.log('Initialized price history with current interval');
+        } else {
+          // Add new entry (avoid duplicates by checking nemTime)
+          if (existingHistory[0].nemTime !== historyEntry.nemTime) {
+            existingHistory.unshift(historyEntry);
+          }
         }
 
         // Keep max 288 records (24 hours at 5min intervals)
