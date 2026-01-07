@@ -1,8 +1,20 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import axios from 'axios';
-import { kv } from '@vercel/kv';
+import { createClient } from 'redis';
 
 const AMBER_BASE_URL = 'https://api.amber.com.au/v1';
+
+// Redis client singleton
+let redisClient: any = null;
+async function getRedisClient() {
+  if (!redisClient) {
+    redisClient = createClient({
+      url: process.env.REDIS_URL,
+    });
+    await redisClient.connect();
+  }
+  return redisClient;
+}
 
 interface PriceData {
   current: any;
@@ -94,8 +106,11 @@ export default async function handler(
       };
 
       try {
-        // Get existing history from KV
-        const existingHistory: any[] = (await kv.get('price-history')) || [];
+        const redis = await getRedisClient();
+
+        // Get existing history from Redis
+        const historyJson = await redis.get('price-history');
+        const existingHistory: any[] = historyJson ? JSON.parse(historyJson) : [];
 
         // Add new entry (avoid duplicates by checking nemTime)
         if (existingHistory.length === 0 || existingHistory[0].nemTime !== historyEntry.nemTime) {
@@ -105,11 +120,11 @@ export default async function handler(
         // Keep max 288 records (24 hours at 5min intervals)
         history = existingHistory.slice(0, 288);
 
-        // Store back to KV with 24 hour expiry
-        await kv.set('price-history', history, { ex: 86400 });
-      } catch (kvError) {
-        console.error('KV error:', kvError);
-        // Continue even if KV fails
+        // Store back to Redis with 24 hour expiry
+        await redis.setEx('price-history', 86400, JSON.stringify(history));
+      } catch (redisError) {
+        console.error('Redis error:', redisError);
+        // Continue even if Redis fails
       }
     }
 

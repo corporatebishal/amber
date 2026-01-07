@@ -1,5 +1,17 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { kv } from '@vercel/kv';
+import { createClient } from 'redis';
+
+// Redis client singleton
+let redisClient: any = null;
+async function getRedisClient() {
+  if (!redisClient) {
+    redisClient = createClient({
+      url: process.env.REDIS_URL,
+    });
+    await redisClient.connect();
+  }
+  return redisClient;
+}
 
 export default async function handler(
   req: VercelRequest,
@@ -19,8 +31,11 @@ export default async function handler(
   }
 
   try {
-    // Get usage data from KV
-    const usageData: any[] = (await kv.get('usage-data')) || [];
+    const redis = await getRedisClient();
+
+    // Get usage data from Redis
+    const usageJson = await redis.get('usage-data');
+    const usageData: any[] = usageJson ? JSON.parse(usageJson) : [];
 
     // Calculate totals
     const now = new Date();
