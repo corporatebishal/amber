@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import axios from 'axios';
+import { kv } from '@vercel/kv';
 
 const AMBER_BASE_URL = 'https://api.amber.com.au/v1';
 
@@ -81,6 +82,37 @@ export default async function handler(
     console.log('Current interval:', currentInterval ? 'found' : 'not found');
     console.log('Forecast intervals:', forecastIntervals.length);
 
+    // Store current price in KV for history
+    let history: any[] = [];
+    if (currentInterval) {
+      const historyEntry = {
+        price: currentInterval.perKwh,
+        nemTime: currentInterval.nemTime,
+        descriptor: currentInterval.descriptor,
+        renewables: currentInterval.renewables,
+        timestamp: new Date().toISOString(),
+      };
+
+      try {
+        // Get existing history from KV
+        const existingHistory: any[] = (await kv.get('price-history')) || [];
+
+        // Add new entry (avoid duplicates by checking nemTime)
+        if (existingHistory.length === 0 || existingHistory[0].nemTime !== historyEntry.nemTime) {
+          existingHistory.unshift(historyEntry);
+        }
+
+        // Keep max 288 records (24 hours at 5min intervals)
+        history = existingHistory.slice(0, 288);
+
+        // Store back to KV with 24 hour expiry
+        await kv.set('price-history', history, { ex: 86400 });
+      } catch (kvError) {
+        console.error('KV error:', kvError);
+        // Continue even if KV fails
+      }
+    }
+
     const priceData: PriceData = {
       current: currentInterval ? {
         price: currentInterval.perKwh,
@@ -99,7 +131,7 @@ export default async function handler(
         renewables: interval.renewables,
         type: interval.type,
       })),
-      history: [], // Note: History not available in serverless, would need a database
+      history: history,
     };
 
     return res.status(200).json(priceData);

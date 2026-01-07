@@ -169,35 +169,6 @@ function App() {
       }
 
       console.log('Price data received:', data);
-
-      // For Vercel: Build local history in browser storage
-      if (isVercel && data.current) {
-        const storageKey = 'amber-price-history';
-        const existingHistory = localStorage.getItem(storageKey);
-        const history: PriceData['history'] = existingHistory ? JSON.parse(existingHistory) : [];
-
-        // Add current price to history
-        const newEntry = {
-          price: data.current.price,
-          nemTime: data.current.nemTime,
-          descriptor: data.current.descriptor,
-          renewables: data.current.renewables,
-          timestamp: new Date().toISOString(),
-        };
-
-        // Avoid duplicates (check if last entry has same nemTime)
-        if (history.length === 0 || history[0].nemTime !== newEntry.nemTime) {
-          history.unshift(newEntry);
-        }
-
-        // Keep max 288 records (24 hours at 5min intervals)
-        const trimmedHistory = history.slice(0, 288);
-        localStorage.setItem(storageKey, JSON.stringify(trimmedHistory));
-
-        // Update data with local history
-        data.history = trimmedHistory;
-      }
-
       setPriceData(data);
       setLastUpdate(new Date());
       const intervalSeconds = settings ? getIntervalSeconds(settings.checkInterval) : 60;
@@ -326,12 +297,10 @@ function App() {
                 />
               </div>
 
-              {/* Only show usage on localhost (requires backend storage) */}
-              {!isVercel && (
-                <div className="usage-section">
-                  <UsageChart usage={usageData} />
-                </div>
-              )}
+              {/* Usage chart - now works on Vercel with KV storage */}
+              <div className="usage-section">
+                <UsageChart usage={usageData} />
+              </div>
             </div>
 
             {/* Next 2 Hours - Full width row */}
