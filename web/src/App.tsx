@@ -3,6 +3,10 @@ import './App.css';
 import PriceDisplay from './components/PriceDisplay';
 import PriceChart from './components/PriceChart';
 import ForecastChart from './components/ForecastChart';
+import ShortTermForecast from './components/ShortTermForecast';
+import Settings from './components/Settings';
+import RateLimitBanner from './components/RateLimitBanner';
+import UsageChart from './components/UsageChart';
 
 interface PriceData {
   current: {
@@ -29,11 +33,16 @@ interface PriceData {
     renewables: number;
     timestamp: string;
   }>;
+  rateLimit?: {
+    limit: number | null;
+    remaining: number | null;
+    reset: number | null;
+  };
 }
 
 interface AppSettings {
   feedInThreshold: number;
-  timezone: string;
+  checkInterval: string;
   notificationChannels: string[];
 }
 
@@ -42,50 +51,128 @@ function App() {
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected'>('connecting');
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
-  const [localHistory, setLocalHistory] = useState<PriceData['history']>([]);
+  const [showSettings, setShowSettings] = useState(false);
+  const [nextUpdateIn, setNextUpdateIn] = useState<number>(60);
+  const [rateLimit, setRateLimit] = useState<{
+    limit: number | null;
+    remaining: number | null;
+    reset: number | null;
+  } | null>(null);
+  const [usageData, setUsageData] = useState<any[]>([]);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
+
+  // Detect if running on Vercel (serverless, no WebSocket support)
+  const isVercel = window.location.hostname.includes('vercel.app');
+
+  // Calculate interval in seconds from settings
+  const getIntervalSeconds = (interval: string | undefined): number => {
+    if (!interval) return 60;
+    if (interval.endsWith('s')) {
+      return parseInt(interval.slice(0, -1));
+    }
+    return 60;
+  };
+
+  // Countdown timer
+  useEffect(() => {
+    const intervalSeconds = settings ? getIntervalSeconds(settings.checkInterval) : 60;
+
+    const countdown = setInterval(() => {
+      setNextUpdateIn(prev => {
+        if (prev <= 1) {
+          return intervalSeconds;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(countdown);
+  }, [lastUpdate, settings]);
 
   useEffect(() => {
     // Fetch initial data
     fetchPriceData();
     fetchSettings();
+    fetchUsageData();
 
-    // Poll every minute (Vercel serverless doesn't support WebSocket)
-    const interval = setInterval(() => {
-      fetchPriceData();
-    }, 60000); // 60 seconds
+    if (isVercel) {
+      // Vercel: Use polling instead of WebSocket
+      const interval = setInterval(() => {
+        fetchPriceData();
+      }, 60000); // Poll every minute
 
-    return () => {
-      clearInterval(interval);
-    };
+      setConnectionStatus('connected');
+
+      return () => clearInterval(interval);
+    } else {
+      // Local: Use WebSocket for real-time updates
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const wsUrl = `${protocol}//${window.location.hostname}:${window.location.port || 3000}`;
+      const ws = new WebSocket(wsUrl);
+
+      ws.onopen = () => {
+        console.log('WebSocket connected');
+        setConnectionStatus('connected');
+      };
+
+      ws.onmessage = (event) => {
+        const message = JSON.parse(event.data);
+        if (message.type === 'price-update') {
+          setPriceData(message.data);
+          setLastUpdate(new Date());
+          const intervalSeconds = settings ? getIntervalSeconds(settings.checkInterval) : 60;
+          setNextUpdateIn(intervalSeconds);
+          setConnectionStatus('connected');
+
+          if (message.data.rateLimit) {
+            setRateLimit(message.data.rateLimit);
+          }
+        }
+      };
+
+      ws.onerror = (error) => {
+        console.error('WebSocket error:', error);
+        setConnectionStatus('disconnected');
+      };
+
+      ws.onclose = () => {
+        console.log('WebSocket disconnected');
+        setConnectionStatus('disconnected');
+      };
+
+      // Fallback: Fetch data every minute if WebSocket disconnects
+      const interval = setInterval(() => {
+        if (ws.readyState !== WebSocket.OPEN) {
+          fetchPriceData();
+        }
+      }, 60000);
+
+      return () => {
+        ws.close();
+        clearInterval(interval);
+      };
+    }
   }, []);
 
   const fetchPriceData = async () => {
     try {
       setConnectionStatus('connecting');
-      const response = await fetch('/api/prices');
+      const response = await fetch('/api/prices/current');
       const data = await response.json();
 
-      // Build local history since serverless can't store it
-      if (data.current) {
-        setLocalHistory(prev => {
-          const newHistory = [{
-            price: data.current.price,
-            nemTime: data.current.nemTime,
-            descriptor: data.current.descriptor,
-            renewables: data.current.renewables,
-            timestamp: new Date().toISOString(),
-          }, ...prev];
-
-          // Keep max 288 records (24 hours at 5min intervals)
-          return newHistory.slice(0, 288);
-        });
+      if (data.rateLimit) {
+        setRateLimit(data.rateLimit);
       }
 
-      setPriceData({
-        ...data,
-        history: localHistory,
-      });
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      console.log('Price data received:', data);
+      setPriceData(data);
       setLastUpdate(new Date());
+      const intervalSeconds = settings ? getIntervalSeconds(settings.checkInterval) : 60;
+      setNextUpdateIn(intervalSeconds);
       setConnectionStatus('connected');
     } catch (error) {
       console.error('Failed to fetch price data:', error);
@@ -103,13 +190,68 @@ function App() {
     }
   };
 
+  const fetchUsageData = async () => {
+    try {
+      const response = await fetch('/api/usage/current');
+      if (response.ok) {
+        const data = await response.json();
+        if (data.usage) {
+          setUsageData(data.usage);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch usage data:', error);
+    }
+  };
+
+  const handleSettingsUpdate = async (newSettings: Partial<AppSettings>) => {
+    try {
+      const response = await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newSettings),
+      });
+      const result = await response.json();
+      if (result.success) {
+        await fetchSettings();
+        alert('Settings updated successfully! Some changes may require a restart.');
+      }
+    } catch (error) {
+      console.error('Failed to update settings:', error);
+      alert('Failed to update settings');
+    }
+  };
+
   return (
     <div className="app">
       <header className="header">
         <div className="header-content">
-          <h1>⚡ Amber Price Monitor</h1>
-          <div className="header-controls">
+          <h1>⚡ Amber</h1>
+
+          {/* Mobile: Status + Hamburger */}
+          <div className="mobile-header-controls">
             <div className="status">
+              <span className={`status-indicator ${connectionStatus}`}></span>
+              <span className="status-text">
+                {connectionStatus === 'connected' ? 'Live' : connectionStatus === 'connecting' ? 'Connecting...' : 'Offline'}
+              </span>
+            </div>
+            <button
+              className="hamburger-button"
+              onClick={() => setShowMobileMenu(!showMobileMenu)}
+              aria-label="Menu"
+            >
+              <span className={`hamburger-icon ${showMobileMenu ? 'open' : ''}`}>
+                <span></span>
+                <span></span>
+                <span></span>
+              </span>
+            </button>
+          </div>
+
+          {/* Desktop: All controls */}
+          <div className={`header-controls ${showMobileMenu ? 'mobile-open' : ''}`}>
+            <div className="status desktop-only">
               <span className={`status-indicator ${connectionStatus}`}></span>
               <span className="status-text">
                 {connectionStatus === 'connected' ? 'Live' : connectionStatus === 'connecting' ? 'Connecting...' : 'Offline'}
@@ -118,46 +260,82 @@ function App() {
             <div className="last-update">
               Updated: {lastUpdate.toLocaleTimeString()}
             </div>
-            <div className="vercel-badge">
-              <span style={{ fontSize: '0.85rem', color: '#666' }}>Deployed on Vercel</span>
+            <div className="next-update">
+              Next update: {nextUpdateIn}s
             </div>
+            <button
+              className="settings-button"
+              onClick={() => {
+                setShowSettings(!showSettings);
+                setShowMobileMenu(false);
+              }}
+            >
+              ⚙️ Settings
+            </button>
           </div>
         </div>
       </header>
 
       <main className="main">
-        <div className="price-section">
-          <PriceDisplay
-            current={priceData?.current}
-            threshold={settings?.feedInThreshold || 15}
+        {showSettings && settings ? (
+          <Settings
+            settings={settings}
+            onUpdate={handleSettingsUpdate}
+            onClose={() => setShowSettings(false)}
           />
-        </div>
+        ) : (
+          <>
+            {/* Rate Limit Banner */}
+            <RateLimitBanner rateLimit={rateLimit} />
 
-        <div className="charts-section">
-          <div className="chart-card">
-            <h2>Price History (Session)</h2>
-            <PriceChart
-              history={localHistory}
-              threshold={settings?.feedInThreshold || 15}
-            />
-          </div>
+            {/* Top row: Price and Usage */}
+            <div className="content-grid">
+              <div className="price-section">
+                <PriceDisplay
+                  current={priceData?.current}
+                  threshold={settings?.feedInThreshold || 15}
+                />
+              </div>
 
-          <div className="chart-card">
-            <h2>Price Forecast (Next 24 Hours)</h2>
-            <ForecastChart
-              forecast={priceData?.forecast || []}
-              threshold={settings?.feedInThreshold || 15}
-            />
-          </div>
-        </div>
+              <div className="usage-section">
+                <UsageChart usage={usageData} />
+              </div>
+            </div>
+
+            {/* Next 2 Hours - Full width row */}
+            <div className="forecast-short-term-section">
+              <ShortTermForecast
+                forecast={priceData?.forecast || []}
+                threshold={settings?.feedInThreshold || 15}
+              />
+            </div>
+
+            <div className="charts-section">
+              <div className="chart-card">
+                <h2>Price History (24 Hours)</h2>
+                <PriceChart
+                  history={priceData?.history || []}
+                  threshold={settings?.feedInThreshold || 15}
+                />
+              </div>
+
+              <div className="chart-card">
+                <h2>Price Forecast (Next 24 Hours)</h2>
+                <ForecastChart
+                  forecast={priceData?.forecast || []}
+                  threshold={settings?.feedInThreshold || 15}
+                />
+              </div>
+            </div>
+          </>
+        )}
       </main>
 
       <footer className="footer">
         <p>
           Monitoring feed-in prices from Amber Electric •
           Threshold: {settings?.feedInThreshold || 15}c/kWh •
-          Updates every minute •
-          Deployed on Vercel
+          Updates every minute
         </p>
       </footer>
     </div>
