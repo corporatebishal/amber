@@ -198,12 +198,39 @@
 .block-price {
   font-size: 1.5rem;
   font-weight: 800;
-  background: var(--gradient-primary);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
   line-height: 1;
   margin-bottom: 0.4rem;
+  transition: color 0.3s ease;
+}
+
+/* Price colors based on threshold */
+.interval-block.very-low .block-price {
+  color: #059669; /* Dark green */
+}
+
+.interval-block.low .block-price {
+  color: #10b981; /* Green */
+}
+
+.interval-block.slightly-low .block-price {
+  color: #34d399; /* Light green */
+}
+
+.interval-block.slightly-high .block-price {
+  color: #fbbf24; /* Light orange */
+}
+
+.interval-block.high .block-price {
+  color: #f97316; /* Orange */
+}
+
+.interval-block.very-high .block-price {
+  color: #ef4444; /* Red */
+}
+
+.interval-block.extreme-high .block-price {
+  color: #dc2626; /* Dark red */
+  text-shadow: 0 0 10px rgba(220, 38, 38, 0.4);
 }
 
 .block-unit {
